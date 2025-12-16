@@ -12,9 +12,9 @@ K = np.array([
 Bf = 3.875744e+02  # base line * focal length
 
 # load images
-left = cv2.imread('img/left.png', 0)
-right = cv2.imread('img/right.png', 0)
-left_color = cv2.imread('img/left_color.png')
+left = cv2.imread('./img/left.png', 0)
+right = cv2.imread('./img/right.png', 0)
+left_color = cv2.imread('./img/left_color.png')
 
 # compute disparity
 stereo = cv2.StereoBM_create(numDisparities=16, blockSize=5)
@@ -23,7 +23,10 @@ disparity = stereo.compute(left, right)  # an image of the same size with "left"
 # TODO: compute depth of every pixel whose disparity is positive
 # hint: assume d is the disparity of pixel (u, v)
 # hint: the depth Z of this pixel is Z = Bf / d
-
+valid_pixels = disparity > 0 
+Z = np.zeros_like(disparity, dtype=np.float32)
+np.divide(Bf, disparity, out=Z, where=valid_pixels)
+print("Depth map computed.", Z)
 # TODO: compute normalized coordinate of every pixel whose disparity is positive
 # hint: the normalized coordinate of pixel [u, v, 1] is K^(-1) @ [u, v, 1]
 
@@ -50,3 +53,4 @@ cloud.points = o3d.utility.Vector3dVector(all_3d)
 cloud.colors = o3d.utility.Vector3dVector(all_color)
 mesh_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.6, origin=[0, 0, 0])  # create frame object
 o3d.visualization.draw_geometries([cloud, mesh_frame])
+    
