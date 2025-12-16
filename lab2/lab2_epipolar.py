@@ -12,9 +12,9 @@ def normalize_transformation(points: np.ndarray) -> np.ndarray:
     :param points: <float: num_points, 2> set of key points on an image
     :return: (sim_trans <float, 3, 3>)
     """
-    center = np.array([])  # TODO: find center of the set of points by computing mean of x & y
-    dist = np.array([])  # TODO: matrix of distance from every point to the origin, shape: <num_points, 1>
-    s = 0  # TODO: scale factor the similarity transformation = sqrt(2) / (mean of dist)
+    center = np.array([points, axis = 0])  # TODO: find center of the set of points by computing mean of x & y
+    dist = np.linalg.norm([points - center, axis = 1]).reshape(-1, 1)  # TODO: matrix of distance from every point to the origin, shape: <num_points, 1>
+    s = np.sqrt(2) /  np.mean(dist)  # TODO: scale factor the similarity transformation = sqrt(2) / (mean of dist)
     sim_trans = np.array([
         [s,     0,      -s * center[0]],
         [0,     s,      -s * center[1]],
