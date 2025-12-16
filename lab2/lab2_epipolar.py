@@ -12,8 +12,8 @@ def normalize_transformation(points: np.ndarray) -> np.ndarray:
     :param points: <float: num_points, 2> set of key points on an image
     :return: (sim_trans <float, 3, 3>)
     """
-    center = np.array([points, axis = 0])  # TODO: find center of the set of points by computing mean of x & y
-    dist = np.linalg.norm([points - center, axis = 1]).reshape(-1, 1)  # TODO: matrix of distance from every point to the origin, shape: <num_points, 1>
+    center = np.mean(points, axis = 0)  # TODO: find center of the set of points by computing mean of x & y
+    dist = np.linalg.norm(points - center, axis = 1).reshape(-1, 1)  # TODO: matrix of distance from every point to the origin, shape: <num_points, 1>
     s = np.sqrt(2) /  np.mean(dist)  # TODO: scale factor the similarity transformation = sqrt(2) / (mean of dist)
     sim_trans = np.array([
         [s,     0,      -s * center[0]],
@@ -51,18 +51,24 @@ train_kpts = np.array([kp2[m.trainIdx].pt for m in matches]).reshape((-1, 2))  #
 
 # normalize kpts
 T_query = normalize_transformation(query_kpts)  # get the similarity transformation for normalizing query kpts
-normalized_query_kpts = np.array([])  # TODO: apply T_query to query_kpts to normalize them
+normalized_query_kpts = homogenize(query_kpts)
+normalized_query_kpts = np.dot(T_query, normalized_query_kpts.T).T  # TODO: apply T_query to query_kpts to normalize them
 
 T_train = normalize_transformation(train_kpts)  # get the similarity transformation for normalizing train kpts
-normalized_train_kpts = np.array([])  # TODO: apply T_train to train_kpts to normalize them
+normalized_train_kpts = homogenize(train_kpts)
+normalized_train_kpts = np.dot(T_train, normalized_train_kpts.T).T  # TODO: apply T_train to train_kpts to normalize them
 
 # construct homogeneous linear equation to find fundamental matrix
-A = np.array([])  # TODO: construct A according to Eq.(3) in lab subject
+A = np.zeros((len(normalized_query_kpts), 9))
+for i in range(len(normalized_query_kpts)):
+    x, y, _ = normalized_query_kpts[i]
+    u, v, _ = normalized_train_kpts[i]
+    A[i] = (u*x, u*y, u, v*x, v*y, v, x, y, 1)  # TODO: construct A according to Eq.(3) in lab subject
 
 # TODO: find vector f by solving A f = 0 using SVD
 # hint: perform SVD of A using np.linalg.svd to get u, s, vh (vh is the transpose of v)
 # hint: f is the last column of v
-f = np.array([])  # TODO: find f
+f = np.linalg.svd(A)[2][-1]  # TODO: find f
 
 # arrange f into 3x3 matrix to get fundamental matrix F
 F = f.reshape(3, 3)
@@ -72,10 +78,14 @@ print('rank F: ', np.linalg.matrix_rank(F))  # should be = 3
 # hint: perform SVD of F using np.linalg.svd to get u, s, vh
 # hint: set the smallest singular value of F to 0
 # hint: reconstruct F from u, new_s, vh
+U, S, V = np.linalg.svd(F)
+S[-1] = 0
+F = np.dot(U, np.dot(np.diag(S), V))
 assert np.linalg.matrix_rank(F) == 2, 'Fundamental matrix must have rank 2'
 
 # TODO: de-normlaize F
 # hint: last line of Algorithme 1 in the lab subject
+F = np.dot(T_train.T, np.dot(F, T_query))
 F_gt = np.loadtxt('chapel.00.01.F')
 print(F - F_gt)
 
