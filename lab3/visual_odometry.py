@@ -85,17 +85,17 @@ class VisualOdometry:
         incoming_pts = np.array([self.incoming_kpts[m.trainIdx].pt for m in matches]).reshape((-1, 2))  # <num_pts, 2>
 
         # compute homography
-        mat_H, mask = np.array([]), np.array([])  # TODO
+        mat_H, mask = cv2.findHomography(src_pts, incoming_pts, method = cv2.RANSAC, ransacReprojThreshold = self.homography_ransac_threshold)  # TODO
 
         # get inliers (with respect to the homography found above) in src_pts
         inliers = list(map(bool, mask.ravel().tolist()))
         src_pts = src_pts[inliers, :]  # <num_inliers, 2>
         src_pts_homo = homogenized(src_pts)  # convert src_pts into homogeneous coordinate <num_inliers, 3>
         # compute normalized coordinate of inliers
-        src_pts_normalized = np.array([])  # TODO: result should have the shape of <num_inliers, 3>
+        src_pts_normalized = (self.inv_K @ src_pts_homo.T).T  # TODO: result should have the shape of <num_inliers, 3>
 
         # decompose homography to get (R, t, n)
-        num_candidates, rots, trans, normals = 0, [np.array([])], [np.array([])], [np.array([])]  # TODO
+        num_candidates, rots, trans, normals = cv2.decomposeHomographyMat(mat_H, self.camera_intrinsic)  # TODO
         if self.print_info:
             print('decomposition of homography yields {} candidates'.format(num_candidates))
             if rots:
@@ -111,9 +111,9 @@ class VisualOdometry:
             pruned_candidate_indices = []
             for i, n in enumerate(normals):
                 # compute ratio of d/z for every inlier
-                d_over_z = np.array([])  # TODO: result should be an array of <float: num_inliers>
+                d_over_z = src_pts_normalized @ n  # TODO: result should be an array of <float: num_inliers>
                 # check if any ratio is negative
-                is_valid = True  # TODO: True if every inlier has positive depth, False otherwise
+                is_valid = np.all(d_over_z > 0)  # TODO: True if every inlier has positive depth, False otherwise
                 if not is_valid:
                     pruned_candidate_indices.append(i)
                     if self.print_info:
@@ -133,8 +133,8 @@ class VisualOdometry:
             #
             if len(rots) > 1:
                 assert len(rots) == 2, 'After pruning solution gives negative z, still have more than 1 candidate'
-                angle_0 = 0  # TODO: compute angle between 1st candidate of normal vector with self.plane_normal_src
-                angle_1 = 0  # TODO: compute angle between 2nd candidate of normal vector with self.plane_normal_src
+                angle_0 = np.arccos(normals[0].T @ self.plane_normal_src)  # TODO: compute angle between 1st candidate of normal vector with self.plane_normal_src
+                angle_1 = np.arccos(normals[1].T @ self.plane_normal_src)  # TODO: compute angle between 2nd candidate of normal vector with self.plane_normal_src
                 del_idx = 0 if angle_0 > angle_1 else 1
                 del rots[del_idx]
                 del trans[del_idx]
@@ -146,15 +146,17 @@ class VisualOdometry:
             if self.plane_d_src < 0:
                 if self.print_info:
                     print('initialize plane distance to src frame')
-                self.plane_d_src = 0.00001  # TODO: compute distance from the 1st camera frame C0 to the plane
+                self.plane_d_src = normals[0].T @ self.plane_origin_src  # TODO: compute distance from the 1st camera frame C0 to the plane
                 assert self.plane_d_src > 0, 'plane distance to src frame must be positive'
 
             # scale the translation using plane's distance to src frame
-            trans[0] = trans[0]  # TODO: scale the translation vector with self.plane_d_src
+            trans[0] = trans[0] * self.plane_d_src  # TODO: scale the translation vector with self.plane_d_src
 
             # build transformation from src frame to incoming frame
             incoming_M_src = np.eye(4)  # TODO create the transfromation matrix from src camera frame to
             # TODO: (continue) incoming camera frame using trans[0] and normals[0]
+            incoming_M_src[:3, :3] = rots[0]
+            incoming_M_src[:3, 3] = trans[0].reshape(3,)
 
             if update_src_frame:
                 # replace src key pts & descriptors with those of incoming frame
