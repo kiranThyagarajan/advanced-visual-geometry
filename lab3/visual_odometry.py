@@ -160,29 +160,32 @@ class VisualOdometry:
 
             if update_src_frame:
                 # replace src key pts & descriptors with those of incoming frame
-                self.src_kpts = []  # TODO
-                self.src_desc = []  # TODO
+                self.src_kpts = self.incoming_kpts  # TODO
+                self.src_desc = self.incoming_desc  # TODO
 
                 # map the plane's normal from src frame to incoming frame
-                self.plane_normal_src = np.zeros((3, 1))  # TODO
+                self.plane_normal_src = incoming_M_src[:3, :3] @ normals[0]  # TODO
 
                 #
                 # COMPUTE PLANE'S DISTANCE TO INCOMING FRAME
                 #
                 # find depth of every inliers (w.r.t homography found above)
-                d_over_z = np.array([])  # TODO: result should be an array of <float: num_inliers>
-                depth = np.array([])  # TODO: compute depth of inlier using d and normalize coordinate, result should be
+                d_over_z = (src_pts_normalized @ normals[0]).flatten()  # TODO: result should be an array of <float: num_inliers>
+                d = float(self.plane_d_src) if np.isscalar(self.plane_d_src) else float(np.asarray(self.plane_d_src).squeeze())
+
+                # depth should be shape (num_inliers,)
+                depth = (d / d_over_z).reshape(-1)  # TODO: compute depth of inlier using d and normalize coordinate, result should be
                 # TODO: (continue) an array of <float: num_inliers,>
 
                 # find 3D coordinate in src frame of these inliers
-                src_pts_3d = np.array([])  # TODO: compute 3d coordinate in src camera frame for every inlier,
+                src_pts_3d = src_pts_normalized * depth[:, None]  # TODO: compute 3d coordinate in src camera frame for every inlier,
                 # TODO: (continue) result should be a matrix of shape <num_inliers, 3>
 
                 # map these points to incoming frame
-                incmoing_pts_3d = np.array([])  # TODO: result should have shape <num_inliers, 3>
+                incoming_pts_3d = (incoming_M_src[:3, :3] @ src_pts_3d.T + incoming_M_src[:3, 3:4]).T  # TODO: result should have shape <num_inliers, 3>
 
                 # compute new d by averaging projection of every point onto plane's normal vector
-                self.plane_d_src = 0.00001 # TODO
+                self.plane_d_src = np.mean(incoming_pts_3d @ normals[0]) # TODO
 
             return incoming_M_src, normals[0]
         else:
@@ -216,5 +219,5 @@ class VisualOdometry:
                 print('normal: \n', normal.flatten())
             if update_src_frame:
                 # update the mapping from 1st camera frame (c0) to src (by replacing src with incoming)
-                self.src_M_c0 = np.eye(4)  # TODO
+                self.src_M_c0 = incoming_M_c0  # TODO
             return incoming_M_c0
