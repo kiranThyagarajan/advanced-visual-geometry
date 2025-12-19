@@ -1,6 +1,8 @@
 import numpy as np
 import cv2
 import open3d as o3d
+import argparse
+import logging
 
 
 K = np.array([
@@ -18,7 +20,8 @@ left_color = cv2.imread('./img/left_color.png')
 
 # compute disparity
 stereo = cv2.StereoBM_create(numDisparities=16, blockSize=5)
-disparity = stereo.compute(left, right)  # an image of the same size with "left" (or "right")
+disparity = stereo.compute(left, right)  # an image of the same size with "left" 
+(or "right")
 
 # TODO: compute depth of every pixel whose disparity is positive
 # hint: assume d is the disparity of pixel (u, v)
