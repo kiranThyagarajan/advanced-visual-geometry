@@ -56,16 +56,16 @@ class VisualOdometry:
         :return: matches
         """
         # convert incoming frame to gray scale
-        gray = np.array([])  # TODO
+        gray = cv2.cvtColor(incoming_frame, cv2.COLOR_BGR2GRAY)  # TODO
 
         # if this is the first frame, assign computed kpts to src and return an empty list
         if not self.src_kpts:
-            self.src_kpts, self.src_desc = [], []  # TODO
+            self.src_kpts, self.src_desc = self.orb.detectAndCompute(gray, None)  # TODO
             return []
         else:
             # find matches between incoming kpts and src kpts
-            self.incoming_kpts, self.incoming_desc = [], []  # TODO
-            matches = []  # TODO
+            self.incoming_kpts, self.incoming_desc = self.orb.detectAndCompute(gray, None)  # TODO
+            matches = self.matcher.match(self.src_desc, self.incoming_desc)  # TODO
             return matches
 
     def compute_relative_transform(self, matches: List[cv2.DMatch], update_src_frame: bool) -> \
